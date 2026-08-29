@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+data/
+runs/
+runs_pdes/
+mlruns/
+plots/
+plots_pdes/
+checkpoints/
+*.npy
+*.npz
+*.pth
+*.ckpt
