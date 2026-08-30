@@ -206,12 +206,18 @@ def inference_and_plot(model, dataset, sample_indices, x_pts, y_pts, config, plo
                               savefile='diff', 
                               cmap='coolwarm')
         
-        time_speedup_pct = (1.0 - t_warm / t_cold) * 100.0 if t_cold > 0 else 0.0
-        log_print(f"Refined solver iterations: {iters_refined}  (median {t_warm:.3f}s)  time speedup: {time_speedup_pct:+.1f}%")
+        # S_t = (t_inf / t_warm - 1) * 100%  (eq. 4 in paper)
+        time_speedup_pct = (t_cold / t_warm - 1) * 100.0 if t_warm > 0 else 0.0
+        log_print(f"Refined solver iterations: {iters_refined}  (median {t_warm:.3f}s)  S_t: {time_speedup_pct:+.1f}%")
         log_print(f"CG iters per Newton step (warm): {cg_iters_warm}")
         cg_total_cold = int(sum(cg_iters_cold)) if isinstance(cg_iters_cold, list) else int(cg_iters_cold)
         cg_total_warm = int(sum(cg_iters_warm)) if isinstance(cg_iters_warm, list) else int(cg_iters_warm)
         log_print(f"Total CG iters — cold: {cg_total_cold}, warm: {cg_total_warm}  (reduction: {cg_total_cold - cg_total_warm:+d})")
+        # R_CG^per_step = (cg_total_cold / M_inf) / (cg_total_warm / M_warm)  (eq. 3 in paper)
+        cbar_cold = cg_total_cold / iters if iters > 0 else 0.0
+        cbar_warm = cg_total_warm / iters_refined if iters_refined > 0 else 0.0
+        r_cg_per_step = cbar_cold / cbar_warm if cbar_warm > 0 else float('inf')
+        log_print(f"R_CG^per_step: {r_cg_per_step:.4f}  (cbar_cold={cbar_cold:.2f}, cbar_warm={cbar_warm:.2f})")
         
         # Plot refined solution
         plot_2d_scatter_tensor(xv, yv, idx, plot_dir, u_pred_refined, savefile='refined')
@@ -236,6 +242,7 @@ def inference_and_plot(model, dataset, sample_indices, x_pts, y_pts, config, plo
             't_cold_s': t_cold,
             't_warm_s': t_warm,
             'time_speedup_pct': time_speedup_pct,
+            'r_cg_per_step': r_cg_per_step,
             'cg_iters_cold': cg_iters_cold,
             'cg_iters_warm': cg_iters_warm,
             'cg_total_cold': cg_total_cold,
@@ -249,25 +256,28 @@ def inference_and_plot(model, dataset, sample_indices, x_pts, y_pts, config, plo
     log_print("INFERENCE SUMMARY")
     log_print(f"Timing: median of {N_REPEATS} repetitions per solve; order randomized per sample (burn-in applied)")
     log_print("="*80)
-    log_print(f"{'Idx':<6} {'MSE':<12} {'L2 Error':<12} {'L2 Refined':<12} {'Iters':<8} {'Iters W':<8} {'Iter Spdup':<11} {'t_cold(s)':<11} {'t_warm(s)':<11} {'Time Spdup%':<12} {'CG cold':<9} {'CG warm':<9}")
-    log_print("-"*115)
+    log_print(f"{'Idx':<6} {'MSE':<12} {'L2 Error':<12} {'L2 Refined':<12} {'M_inf':<8} {'M_warm':<8} {'R':<8} {'R_CG^ps':<9} {'t_cold(s)':<11} {'t_warm(s)':<11} {'S_t(%)':<10} {'CG cold':<9} {'CG warm':<9}")
+    log_print("-"*125)
     for r in results:
         log_print(f"{r['idx']:<6} {r['mse_error']:<12.6e} {r['l2_error']:<12.6e} {r['l2_error_refined']:<12.6e} "
-              f"{r['solver_iters']:<8} {r['refined_iters']:<8} {r['speedup']:<11.2f} "
-              f"{r['t_cold_s']:<11.3f} {r['t_warm_s']:<11.3f} {r['time_speedup_pct']:<+12.1f}"
+              f"{r['solver_iters']:<8} {r['refined_iters']:<8} {r['speedup']:<8.2f} "
+              f"{r['r_cg_per_step']:<9.4f} "
+              f"{r['t_cold_s']:<11.3f} {r['t_warm_s']:<11.3f} {r['time_speedup_pct']:<+10.1f}"
               f"{r['cg_total_cold']:<9} {r['cg_total_warm']:<9}")
-    log_print("="*115)
+    log_print("="*125)
 
-    avg_mse = np.mean([r['mse_error'] for r in results])
-    avg_speedup = np.mean([r['speedup'] for r in results if r['speedup'] != float('inf')])
-    avg_t_cold = np.mean([r['t_cold_s'] for r in results])
-    avg_t_warm = np.mean([r['t_warm_s'] for r in results])
+    avg_mse           = np.mean([r['mse_error'] for r in results])
+    avg_speedup       = np.mean([r['speedup'] for r in results if r['speedup'] != float('inf')])
+    avg_r_cg_per_step = np.mean([r['r_cg_per_step'] for r in results if r['r_cg_per_step'] != float('inf')])
+    avg_t_cold        = np.mean([r['t_cold_s'] for r in results])
+    avg_t_warm        = np.mean([r['t_warm_s'] for r in results])
     avg_time_speedup_pct = np.mean([r['time_speedup_pct'] for r in results])
-    avg_cg_cold = np.mean([r['cg_total_cold'] for r in results])
-    avg_cg_warm = np.mean([r['cg_total_warm'] for r in results])
+    avg_cg_cold       = np.mean([r['cg_total_cold'] for r in results])
+    avg_cg_warm       = np.mean([r['cg_total_warm'] for r in results])
     log_print(f"Average MSE: {avg_mse:.6e}")
-    log_print(f"Average iter speedup: {avg_speedup:.2f}x")
-    log_print(f"Average cold-start time: {avg_t_cold:.3f}s  |  warm-start: {avg_t_warm:.3f}s  |  time speedup: {avg_time_speedup_pct:+.1f}%")
+    log_print(f"Average R (iter speedup): {avg_speedup:.4f}")
+    log_print(f"Average R_CG^per_step:    {avg_r_cg_per_step:.4f}")
+    log_print(f"Average S_t:              {avg_time_speedup_pct:+.2f}%  (cold={avg_t_cold:.3f}s, warm={avg_t_warm:.3f}s)")
     log_print(f"Average total CG iters — cold: {avg_cg_cold:.1f}, warm: {avg_cg_warm:.1f}  (avg reduction: {avg_cg_cold - avg_cg_warm:+.1f})")
 
     # Save results to CSV file
@@ -275,6 +285,7 @@ def inference_and_plot(model, dataset, sample_indices, x_pts, y_pts, config, plo
     with open(csv_file_path, 'w', newline='') as csvfile:
         fieldnames = ['idx', 'mse_error', 'l2_error', 'l2_error_refined',
                       'solver_iters', 'refined_iters', 'speedup',
+                      'r_cg_per_step',
                       't_cold_s', 't_warm_s', 'time_speedup_pct',
                       'cg_total_cold', 'cg_total_warm',
                       'cg_iters_cold', 'cg_iters_warm',
@@ -297,6 +308,7 @@ def inference_and_plot(model, dataset, sample_indices, x_pts, y_pts, config, plo
             'solver_iters': '',
             'refined_iters': '',
             'speedup': avg_speedup,
+            'r_cg_per_step': avg_r_cg_per_step,
             't_cold_s': avg_t_cold,
             't_warm_s': avg_t_warm,
             'time_speedup_pct': avg_time_speedup_pct,
