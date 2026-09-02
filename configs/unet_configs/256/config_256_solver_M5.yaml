@@ -1,17 +1,17 @@
 # ── Experiment identity (only these two need changing per run) ──
 run_root: ./runs
-run_name: 128_UNet2D_solver_M3_fixed
+run_name: 256_UNet2D_solver_M5_fixed
 
 data_config: 
   safe_sample_set: './data/alpha_train_safe_nonlinear_840.npy'
   min_iters: 10
   total_safe_samples: 840 # multiple of len(n_set)
-  split_dir: './data/data_128_solver'
+  split_dir: './data/data_256_solver'
   
-  total_num_samples: 160
+  total_num_samples: 320
   train_frac: 0.8
   val_frac: 0.1
-  split_seed: 2345
+  split_seed: 1248
 
   n_pts: 64
 
@@ -22,9 +22,9 @@ data_config:
   n_set: [3, 5, 7, 9, 11, 13]
   dirichlet_value: [0, 0]
 
-  train_path: './data/data_128_solver/train_128_64_s.h5'
-  val_path: './data/data_128_solver/val_16_64_s.h5'
-  test_path: './data/data_128_solver/test_16_64_s.h5'
+  train_path: './data/data_256_solver/train_256_64_s.h5'
+  val_path: './data/data_256_solver/val_32_64_s.h5'
+  test_path: './data/test_sets/test_32_64_dd_seed0.h5'
 
   training_type: 'solver_guided' 
 
@@ -37,9 +37,10 @@ solver_config:
   cg_tol: 1.0e-12            # CG convergence tolerance
 
   # solver run budget
-  maxiters: 3
+  maxiters: 5
   track_convergence: false      # Whether to run full convergence solver for tracking (longer training times)
   solver_iteration_mode: 'fixed' # OR 'adaptive'            
+  newton_dampfactor: 1.0   
   
   # Two-threshold adaptive control (only when 'adaptive')
   delta_M_low: 0.2       # If L2 < this, consider increasing maxiters
@@ -78,6 +79,7 @@ model_config:
 
 # FIX TRAINING CONFIG AND PROCESSES FOR A FAIR COMPARISON BETWEEN ALL EXPERIMENTS
 training_config:
+  seed: 0
   batch_size: 32
   num_solver_processes: 4
   num_data_workers: 4

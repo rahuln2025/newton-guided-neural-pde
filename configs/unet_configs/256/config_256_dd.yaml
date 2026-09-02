@@ -1,17 +1,17 @@
 # ── Experiment identity (only these two need changing per run) ──
 run_root: ./runs
-run_name: 512_UNet2D_solver_M5_fixed
+run_name: 256_UNet2D_dd
 
 data_config: 
   safe_sample_set: './data/alpha_train_safe_nonlinear_840.npy'
   min_iters: 10
   total_safe_samples: 840 # multiple of len(n_set)
-  split_dir: './data/data_512_solver'
+  split_dir: './data/data_256_datadriven'
   
-  total_num_samples: 640
+  total_num_samples: 320
   train_frac: 0.8
   val_frac: 0.1
-  split_seed: 2345
+  split_seed: 1248
 
   n_pts: 64
 
@@ -22,43 +22,20 @@ data_config:
   n_set: [3, 5, 7, 9, 11, 13]
   dirichlet_value: [0, 0]
 
-  train_path: './data/data_512_solver/train_512_64_s.h5'
-  val_path: './data/data_512_solver/val_64_64_s.h5'
-  test_path: './data/data_512_solver/test_64_64_s.h5'
+  train_path: './data/data_256_datadriven/train_256_64_dd.h5'
+  val_path: './data/data_256_datadriven/val_32_64_dd.h5'
+  test_path: './data/test_sets/test_32_64_dd_seed0.h5'
 
-  training_type: 'solver_guided' 
+  training_type: 'datadriven' # 'solver_guided'
 
 
 solver_config:
   convergence_maxiters: 100    # Max iterations for full convergence tracking and for sample generation
 
-  linear_solver: 'cg'       # 'direct' (sparsecholesky) or 'cg' (Conjugate Gradient)
+  linear_solver: 'cg'       # 'direct' (sparsecholesky) or 'cg' (preconditioned CG)
   cg_maxiter: 1000           # max CG iterations per Newton step
   cg_tol: 1.0e-12            # CG convergence tolerance
-
-  # solver run budget
-  maxiters: 5
-  track_convergence: false      # Whether to run full convergence solver for tracking (longer training times)
-  solver_iteration_mode: 'fixed' # OR 'adaptive'            
   
-  # Two-threshold adaptive control (only when 'adaptive')
-  delta_M_low: 0.2       # If L2 < this, consider increasing maxiters
-  delta_M_high: 0.4        # If L2 > this, consider decreasing maxiters
-  
-  # Bounds (only when adaptive)
-  min_maxiters: 1            # Never go below this
-  max_maxiters: 100        # Never go above this
-  
-  # Patience to avoid oscillations (only when adaptive)
-  increase_patience: 3       # Wait 3 epochs of low L2 before increasing
-  decrease_patience: 20       # Wait 2 epochs of high L2 before decreasing
-
-
-residual_config:
-  use_solver_loss: true      # include solver-guided loss: loss(pred, u_M)
-  use_residual_loss: false
-  lambda_residual: 0.01   # tune: start small relative to solver NMSE
-
 
 model_config:
   sample_size: [64, 64]
@@ -76,8 +53,8 @@ model_config:
   init_gain: 2.0e-1
   dropout: 0.1
 
-# FIX TRAINING CONFIG AND PROCESSES FOR A FAIR COMPARISON BETWEEN ALL EXPERIMENTS
 training_config:
+  seed: 0
   batch_size: 32
   num_solver_processes: 4
   num_data_workers: 4

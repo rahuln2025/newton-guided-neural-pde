@@ -1,6 +1,6 @@
 # ── Experiment identity (only these two need changing per run) ──
 run_root: ./runs
-run_name: 512_UNet2D_solver_M3_fixed
+run_name: 512_UNet2D_solver_M1_fixed
 
 data_config: 
   safe_sample_set: './data/alpha_train_safe_nonlinear_840.npy'
@@ -24,7 +24,7 @@ data_config:
 
   train_path: './data/data_512_solver/train_512_64_s.h5'
   val_path: './data/data_512_solver/val_64_64_s.h5'
-  test_path: './data/data_512_solver/test_64_64_s.h5'
+  test_path: './data/test_sets/test_32_64_dd_seed0.h5'
 
   training_type: 'solver_guided' 
 
@@ -37,7 +37,7 @@ solver_config:
   cg_tol: 1.0e-12            # CG convergence tolerance
 
   # solver run budget
-  maxiters: 3
+  maxiters: 1
   track_convergence: false      # Whether to run full convergence solver for tracking (longer training times)
   solver_iteration_mode: 'fixed' # OR 'adaptive'            
   
@@ -78,6 +78,7 @@ model_config:
 
 # FIX TRAINING CONFIG AND PROCESSES FOR A FAIR COMPARISON BETWEEN ALL EXPERIMENTS
 training_config:
+  seed: 0
   batch_size: 32
   num_solver_processes: 4
   num_data_workers: 4

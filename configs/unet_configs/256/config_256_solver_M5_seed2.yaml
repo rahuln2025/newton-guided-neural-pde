@@ -1,17 +1,17 @@
 # ── Experiment identity (only these two need changing per run) ──
 run_root: ./runs
-run_name: 256_UNet2D_solver_M3_fixed
+run_name: 256_UNet2D_solver_M5_seed2
 
 data_config: 
   safe_sample_set: './data/alpha_train_safe_nonlinear_840.npy'
   min_iters: 10
   total_safe_samples: 840 # multiple of len(n_set)
-  split_dir: './data/data_256_solver'
+  split_dir: './data/data_256_solver_seed2'
   
   total_num_samples: 320
   train_frac: 0.8
   val_frac: 0.1
-  split_seed: 1248
+  split_seed: 2718
 
   n_pts: 64
 
@@ -22,9 +22,9 @@ data_config:
   n_set: [3, 5, 7, 9, 11, 13]
   dirichlet_value: [0, 0]
 
-  train_path: './data/data_256_solver/train_256_64_s.h5'
-  val_path: './data/data_256_solver/val_32_64_s.h5'
-  test_path: './data/data_256_solver/test_32_64_s.h5'
+  train_path: './data/data_256_solver_seed2/train_256_64_s.h5'
+  val_path: './data/data_256_solver_seed2/val_32_64_s.h5'
+  test_path: './data/test_sets/test_32_64_dd_seed2.h5'
 
   training_type: 'solver_guided' 
 
@@ -37,10 +37,10 @@ solver_config:
   cg_tol: 1.0e-12            # CG convergence tolerance
 
   # solver run budget
-  maxiters: 3
+  maxiters: 5
   track_convergence: false      # Whether to run full convergence solver for tracking (longer training times)
-  solver_iteration_mode: 'fixed' # OR 'adaptive'    
-  newton_dampfactor: 1.0           
+  solver_iteration_mode: 'fixed' # OR 'adaptive'            
+  newton_dampfactor: 1.0   
   
   # Two-threshold adaptive control (only when 'adaptive')
   delta_M_low: 0.2       # If L2 < this, consider increasing maxiters
@@ -79,6 +79,7 @@ model_config:
 
 # FIX TRAINING CONFIG AND PROCESSES FOR A FAIR COMPARISON BETWEEN ALL EXPERIMENTS
 training_config:
+  seed: 2
   batch_size: 32
   num_solver_processes: 4
   num_data_workers: 4
@@ -97,19 +98,3 @@ training_config:
   log_name: null                # derived from run_name
   inference_interval: 20  # Run every x epochs
   test_sample_indices: [1, 8, 12]  # Samples to visualize
-
-
-mlflow_config:
-  enabled: true
-  tracking_uri: sqlite:///mlruns/mlflow.db   # file store deprecated; use SQLite
-  experiment_name: null         # derived from run_name
-  run_name: null                # derived from run_name
-
-
-inference_config:
-  run_sweep:  false
-  run_single: true
-  dataset: test                 # 'train' | 'test'
-  checkpoint: null              # null → best_model.pt from checkpoint_dir; or e.g. ckpt_200.pt
-  sweep_epochs: [100, 200, 300] # epochs to evaluate in sweep mode
-  sample_indices: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]

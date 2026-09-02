@@ -24,7 +24,7 @@ data_config:
 
   train_path: './data/data_512_datadriven/train_512_64_dd.h5'
   val_path: './data/data_512_datadriven/val_64_64_dd.h5'
-  test_path: './data/data_512_datadriven/test_64_64_dd.h5'
+  test_path: './data/test_sets/test_32_64_dd_seed0.h5'
 
   training_type: 'datadriven' # 'solver_guided'
 
@@ -54,6 +54,7 @@ model_config:
   dropout: 0.1
 
 training_config:
+  seed: 0
   batch_size: 32
   num_solver_processes: 4
   num_data_workers: 4
