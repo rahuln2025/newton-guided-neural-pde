@@ -6,8 +6,6 @@ mlruns/
 plots/
 plots_pdes/
 checkpoints/
-*.npy
-*.npz
 *.pth
 *.ckpt
 *.h5
