@@ -417,6 +417,10 @@ def _parse_args():
                         help='Override checkpoint path (default: uses inference_config.checkpoint)')
     parser.add_argument('--sample_indices', '--samples_indices', type=int, nargs='+', default=None,
                         help='Override sample indices from config (e.g. --sample_indices 0 1 2 5)')
+    parser.add_argument('--test_path', type=str, default=None,
+                        help='Override test .h5 path (default: uses data_config.test_path)')
+    parser.add_argument('--out_tag', type=str, default=None,
+                        help='Tag appended to output dir name, e.g. test_id_seed0')
     return parser.parse_args()
 
 
@@ -442,14 +446,24 @@ def main():
     run_sweep      = ic.get('run_sweep',      True)
     run_single     = ic.get('run_single',     False)
     sweep_epochs   = ic.get('sweep_epochs',   [])
+
+    # CLI single-checkpoint mode: --out_tag or --ckpt implies single inference, no sweep
+    if args.out_tag or args.ckpt:
+        run_single = True
+        run_sweep  = False
     dataset_type   = ic.get('dataset',        'test')
     sample_indices = np.array(args.sample_indices if args.sample_indices is not None
                               else ic.get('sample_indices', list(range(32))))
 
+    # CLI overrides
+    if args.test_path:
+        config['data_config']['test_path'] = args.test_path
+
     # All output paths derive from run_name
     plot_timestamp = datetime.now().strftime('%Y%m%d_%H%M')
     infer_base     = os.path.join(run_root, run_name, 'inference')
-    plot_dir       = os.path.join(infer_base, f'single_{plot_timestamp}')
+    out_label      = args.out_tag if args.out_tag else f'single_{plot_timestamp}'
+    plot_dir       = os.path.join(infer_base, out_label)
     sweep_plot_dir = os.path.join(infer_base, f'sweep_{plot_timestamp}')
     os.makedirs(plot_dir, exist_ok=True)
 
@@ -457,6 +471,8 @@ def main():
     print(f"  checkpoint_dir : {ckpt_dir}")
     print(f"  load_ckpt      : {load_checkpoint_path}")
     print(f"  output root    : {infer_base}")
+    print(f"  out_tag        : {out_label}")
+    print(f"  test_path      : {config['data_config']['test_path']}")
     print(f"  sweep epochs   : {sweep_epochs}")
     print(f"  samples        : {sample_indices}\n")
 
