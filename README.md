@@ -42,10 +42,10 @@ Each config specifies `n_pts`, sample counts, and parameter ranges.
 
 ```bash
 # Solver-guided dataset (256 train / 32 val / 32 test, grid 64×64)
-python utils_data_pdes.py --config configs/config_256_solver_M1.yaml
+python utils_data_pdes.py --config configs/unet_configs/256/config_256_solver_M1.yaml
 
 # Data-driven dataset (same parameter space, stores full solutions)
-python utils_data_pdes.py --config configs/config_256_dd.yaml
+python utils_data_pdes.py --config configs/unet_configs/256/config_256_dd.yaml
 ```
 
 Output `.h5` files are written to the path specified in `data_config.train_path` / `val_path` in the config.
@@ -62,19 +62,19 @@ Four experiment types from the paper:
 
 ```bash
 # M=1
-python train.py --config configs/config_256_solver_M1.yaml
+python train.py --config configs/unet_configs/256/config_256_solver_M1.yaml
 
 # M=3
-python train.py --config configs/config_256_solver_M3.yaml
+python train.py --config configs/unet_configs/256/config_256_solver_M3.yaml
 
 # M=5
-python train.py --config configs/config_256_solver_M5.yaml
+python train.py --config configs/unet_configs/256/config_256_solver_M5.yaml
 ```
 
 ### (b) Data-driven baseline
 
 ```bash
-python train_datadriven.py --config configs/config_256_dd.yaml
+python train_datadriven.py --config configs/unet_configs/256/config_256_dd.yaml
 ```
 
 Checkpoints and TensorBoard logs are saved under `runs/<run_name>/<run_id>/`.
@@ -89,21 +89,69 @@ tensorboard --logdir runs/
 ## Step 3 — Inference
 
 ```bash
-python inference.py --config configs/config_256_solver_M1.yaml \
+python inference.py --config configs/unet_configs/256/config_256_solver_M1.yaml \
                     --ckpt runs/256_UNet2D_solver_M1_fixed/<run_id>/checkpoints/best_model.pt
 ```
 
----
-
-## Configs → Paper Results
-
-| Config | Description | Paper Table/Figure |
-|---|---|---|
-| `config_{128,256,512}_solver_M1.yaml` | Solver-guided, M=1 | Table 1 |
-| `config_{128,256,512}_solver_M3.yaml` | Solver-guided, M=3 | Table 1 |
-| `config_{128,256,512}_solver_M5.yaml` | Solver-guided, M=5 | Table 1 |
-| `config_{128,256,512}_dd.yaml` | Data-driven baseline | Table 1 |
 
 ---
+# Conducting Experiments on Multiple Seeds
 
+## Step 1: Generate training data (3 partition seeds per N-M variant)
+
+**Larger pool**:```data/sweep_results.csv``` contains 1500 parameter sets. 
+**Safe pool**: ```data/alpha_train_safe_nonlinear_840.npy``` contains 655 PDE instances, each requiring at least 10 Newton iterations to converge. 
+**Configs**: ```configs``` directory contains three seed configs for each N-M model variant.
+
+Generate dataset for all seeds $\times$ N-M variants: 
+```bash
+bash generate_all_datasets.sh
 ```
+Note: for each (size, seed) pair, only the `solver_M3` config is used to generate the raw dataset — `M1`/`M3`/`M5` configs share the same `train_path`/`val_path` `.h5` files, since the Newton-step budget `M` only changes the training target computed from the solve, not the stored data.
+
+## Step 2: Train all models
+
+`run_training.sh` trains one variant/size combination (seed0 + seed1 on GPU 0, seed2 on GPU 1) per invocation:
+```bash
+bash run_training.sh <variant> <size>   # variant: dd | M1 | M3 | M5   size: 128 | 256 | 512
+```
+To train all 12 variant/size combinations (36 model checkpoints total):
+```bash
+for size in 128 256 512; do
+    for variant in dd M1 M3 M5; do
+        bash run_training.sh "$variant" "$size"
+    done
+done
+```
+Model checkpoints are stored in ```./runs```. 
+
+## Step 3: Generate held-out test sets (3 ID, 2 OOD)
+
+**Larger pool**: ```data/test_sets/pool_solver_stats.csv``` contains 300 (200 ID + 100 OOD) PDE instances with status of convergence or divergence based on final_residual column. 
+**Safe pool**: ```data/test_sets/test_params_pool.csv``` containts 292 (200 ID + 92 OOD) PDE instances that converged with cold-start solver-run. 
+
+### ID test sets: ```data/test_sets/test_params_id_seed{0, 1, 2}.csv``` contains ID parameter sets. 
+### OOD test sets: ```data/test_sets/test_params_ood_seed{0, 1}.csv``` containts OOD parameter sets. 
+
+Generate test dataset .h5 files to run evaluations: 
+```bash
+bash data/generate_all_test_h5.sh data/data_256_solver_seed1/fxy_stats.npz data/test_sets 64
+```
+
+## Step 4: Run inference 
+```bash
+bash run_inference_all.sh
+```
+Total inference jobs: 180
+- 36 model checkpoints (3 sizes $N$ $\times$ 4 variants $M={1,3,5}, DD$ $\times$ 3 seeds)
+- 5 test sets (3 ID + 2 OOD)
+
+## Step 5: Aggregate results
+Once inference is completed for all instances: 
+
+```Python
+python aggregate_results.py
+```
+Aggregate results are stored in ```./results``` and essential plots are stored in ```./plots/doe```
+
+
