@@ -22,15 +22,26 @@ NGSolve must be installed separately: https://ngsolve.org/downloads
 
 ```
 solver.py                   # NGSolve FEM solver + data generation
-model_pdes.py               # UNet2D architecture
-train.py                    # Solver-guided training (main method)
-train_datadriven.py         # Data-driven baseline
-inference.py                # Evaluation
-utils_data_pdes.py          # Dataset generation utilities
-utils_train_with_solver.py  # Training loop (solver-guided)
-utils_train_datadriven.py   # Training loop (data-driven)
-utils_plots.py              # Plotting utilities
-configs/                    # YAML configs for all paper experiments
+model_pdes.py                # UNet2D architecture
+model_neuralop.py            # FNO architecture (neuraloperator wrapper)
+train.py                     # Solver-guided training (main method)
+train_datadriven.py          # Data-driven baseline
+inference.py                 # Evaluation
+utils_data_pdes.py           # Dataset generation utilities
+utils_train_with_solver.py   # Training loop (solver-guided)
+utils_train_datadriven.py    # Training loop (data-driven)
+utils_plots.py               # Plotting utilities
+utils_mlflow.py              # MLflow experiment tracking helpers
+configs/                     # YAML configs for all paper experiments
+data/                        # Datasets, parameter pools, test sets
+generate_all_datasets.sh     # Batch dataset generation (multi-seed)
+run_training.sh              # Train one variant/size combination
+run_inference_all.sh         # Batch inference across all checkpoints/test sets
+aggregate_results.py         # Aggregate inference results + generate plots
+runs/                        # Model checkpoints + TensorBoard logs (output)
+results/                     # Aggregated results (output)
+plots/doe/                   # Summary plots (output)
+requirements.txt             # Python dependencies
 ```
 
 ---
