@@ -1,6 +1,5 @@
 __pycache__/
 *.pyc
-data/
 runs/
 runs_pdes/
 mlruns/
@@ -11,3 +10,4 @@ checkpoints/
 *.npz
 *.pth
 *.ckpt
+*.h5
